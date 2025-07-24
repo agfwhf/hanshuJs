@@ -144,17 +144,28 @@
             }
 
             .function-title {
-                font-size: 20px;
-                font-weight: bold;
-                color: #1976d2;
-                background: linear-gradient(90deg, #e3f2fd 0%, #bbdefb 100%);
-                margin-bottom: 10px;
+                font-size: 16px;
+                font-weight: 600;
+                color: #ffffff;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                margin-bottom: 15px;
                 text-align: center;
-                letter-spacing: 2px;
-                border-radius: 6px;
-                box-shadow: 0 1px 4px rgba(66, 165, 245, 0.10);
-                padding: 6px 0 6px 0;
-                text-shadow: none;
+                letter-spacing: 0.5px;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                padding: 16px 20px;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                font-family: 'Courier New', monospace;
+                position: relative;
+                overflow: hidden;
+                line-height: 1.4;
+            }
+
+            .function-title sup {
+                font-size: 0.7em;
+                vertical-align: super;
+                color: #ffd700;
+                font-weight: bold;
             }
 
             .coordinate-display {
@@ -258,44 +269,6 @@
         document.addEventListener('mouseup', handleDragEnd);
     }
 
-    // 添加原点标注
-    function addOriginLabel(instance) {
-        const plotElement = document.getElementById('plot');
-        const svg = plotElement.querySelector('svg');
-        
-        if (svg && instance) {
-            // 移除已存在的原点标注
-            const existingOrigin = svg.querySelector('#origin-label');
-            if (existingOrigin) {
-                existingOrigin.remove();
-            }
-            
-            // 获取坐标转换信息
-            const xScale = instance.meta.xScale;
-            const yScale = instance.meta.yScale;
-            
-            if (xScale && yScale) {
-                // 计算原点(0,0)在SVG中的像素位置
-                const originX = xScale(0);
-                const originY = yScale(0);
-                
-                // 创建文本元素
-                const originLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                originLabel.setAttribute('id', 'origin-label');
-                originLabel.setAttribute('x', originX - 10);
-                originLabel.setAttribute('y', originY - 10);
-                originLabel.setAttribute('fill', 'white');
-                originLabel.setAttribute('font-size', '16px');
-                originLabel.setAttribute('font-weight', 'bold');
-                originLabel.setAttribute('text-anchor', 'middle');
-                originLabel.textContent = 'O';
-                
-                // 添加到SVG中
-                svg.appendChild(originLabel);
-            }
-        }
-    }
-
     // 初始化基础功能
     function initBaseFunctions() {
         // 监听窗口大小改变
@@ -316,7 +289,8 @@
         // 确保function-plot已加载
         if (typeof functionPlot === 'undefined') {
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/function-plot@1.22.7/dist/function-plot.js';
+            // script.src = 'https://cdn.jsdelivr.net/npm/function-plot@1.22.7/dist/function-plot.js';
+            script.src = 'https://cnrvlcbdgwyb.sealoshzh.site/static/function-plot.js';
             script.onload = function() {
                 console.log('function-plot loaded');
             };
@@ -324,15 +298,63 @@
         }
     }
 
+    // 格式化数学表达式，使其更美观
+    function formatMathExpression(expr) {
+        // 替换数学符号为更美观的显示
+        let formatted = expr
+            .replace(/\^(\d+)/g, '<sup>$1</sup>')  // 将 ^数字 替换为 <sup>数字</sup>
+            .replace(/\*/g, '·')  // 将 * 替换为 ·
+            .replace(/sin/g, 'sin')
+            .replace(/cos/g, 'cos')
+            .replace(/tan/g, 'tan')
+            .replace(/exp\(([^)]+)\)/g, 'e<sup>$1</sup>')  // 将 exp(内容) 替换为 e<sup>内容</sup>
+            .replace(/log/g, 'ln')
+            .replace(/sqrt/g, '√')
+            // 分数处理：匹配简单的 a/b 形式，避免与幂运算冲突
+            .replace(/([a-zA-Z0-9]+)\/([a-zA-Z0-9]+)/g, '<span style="display: inline-block; vertical-align: middle; text-align: center;"><span style="border-bottom: 1px solid #e0e0e0; padding: 0 2px;">$1</span><span style="display: block; font-size: 0.9em; color: #b0b0b0;">$2</span></span>');
+        
+        return formatted;
+    }
+
     // 渲染参数滑块区块
     function renderSliders(functions) {
         let html = '';
-        functions.forEach(fn => {
+        functions.forEach((fn, index) => {
             // 自动用exprs作为标题和唯一标识
             const idBase = fn.name || fn.exprs;
+            
+            // 格式化函数表达式，使其更易读
+            let formattedExpr = fn.exprs;
+            if (fn.graphType === 'parametric') {
+                // 参数方程格式化为更美观的形式
+                const parts = fn.exprs.split(',');
+                if (parts.length === 2) {
+                    // 移除可能存在的x=和y=前缀
+                    let xExpr = parts[0].trim();
+                    let yExpr = parts[1].trim();
+                    
+                    // 如果表达式已经包含x=或y=，则移除
+                    xExpr = xExpr.replace(/^x\s*=\s*/i, '');
+                    yExpr = yExpr.replace(/^y\s*=\s*/i, '');
+                    
+                    const formattedX = formatMathExpression(xExpr);
+                    const formattedY = formatMathExpression(yExpr);
+                    formattedExpr = `<div style="text-align: left; line-height: 1.4; font-family: 'Courier New', monospace;">
+                        <div style="margin-bottom: 8px; color: #e0e0e0;">x = ${formattedX}</div>
+                        <div style="color: #e0e0e0;">y = ${formattedY}</div>
+                    </div>`;
+                }
+            } else {
+                // 普通函数添加 y = 前缀并格式化
+                const formatted = formatMathExpression(formattedExpr);
+                formattedExpr = `<div style="text-align: center; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace; color: #e0e0e0;">
+                    y = ${formatted}
+                </div>`;
+            }
+            
             html += `
                 <div class="function-block">
-                    <div class="function-title">${fn.exprs}</div>
+                    <div class="function-title">${formattedExpr}</div>
             `;
             for (const key in fn.params) {
                 const p = fn.params[key];
@@ -362,16 +384,77 @@
         return allValues;
     }
 
-    // 区间解析
-    function parseRange(rangeStr) {
-        const match = rangeStr.match(/^\s*([\[\(])\s*([\-\d\.]+)\s*,\s*([\-\d\.]+)\s*([\]\)])\s*$/);
-        if (!match) return null;
-        return {
-            leftType: match[1],
-            left: parseFloat(match[2]),
-            right: parseFloat(match[3]),
-            rightType: match[4]
-        };
+    // 区间解析 - 支持参数化区间
+    function parseRange(rangeStr, params = {}) {
+        // 先尝试匹配纯数字区间
+        const match = rangeStr.match(/^([\[\(])\s*([\-\d\.]+)\s*,\s*([\-\d\.]+)\s*([\]\)])$/);
+        if (match) {
+            return {
+                leftType: match[1],
+                left: parseFloat(match[2]),
+                right: parseFloat(match[3]),
+                rightType: match[4]
+            };
+        }
+        
+        // 匹配包含参数的区间
+        const paramMatch = rangeStr.match(/^([\[\(])\s*([^,]+)\s*,\s*([^,\]]+)\s*([\]\)])$/);
+        if (paramMatch) {
+            let leftExpr = paramMatch[2].trim();
+            let rightExpr = paramMatch[3].trim();
+            
+            // 先处理负数的幂运算（在参数替换之前）
+            leftExpr = leftExpr.replace(/(\-\d+\.?\d*)\^(\d+)/g, 'Math.pow($1, $2)');
+            rightExpr = rightExpr.replace(/(\-\d+\.?\d*)\^(\d+)/g, 'Math.pow($1, $2)');
+            
+            // 先处理变量的幂运算（在参数替换之前）
+            leftExpr = leftExpr.replace(/([a-zA-Z_][a-zA-Z0-9]*)\^(\d+)/g, 'Math.pow($1, $2)');
+            rightExpr = rightExpr.replace(/([a-zA-Z_][a-zA-Z0-9]*)\^(\d+)/g, 'Math.pow($1, $2)');
+            
+            // 替换参数（使用单词边界来避免匹配Math中的字母）
+            Object.keys(params).forEach(key => {
+                const regex = new RegExp(`\\b${key}\\b`, 'g');
+                leftExpr = leftExpr.replace(regex, params[key]);
+                rightExpr = rightExpr.replace(regex, params[key]);
+            });
+            
+            // 将数学符号转换为JavaScript语法（仅用于eval计算）
+            // 处理负数的特殊情况
+            leftExpr = leftExpr.replace(/(\-\d+\.?\d*)\*\*/g, '($1)**');
+            rightExpr = rightExpr.replace(/(\-\d+\.?\d*)\*\*/g, '($1)**');
+            
+            // 处理负数的特殊情况
+            leftExpr = leftExpr.replace(/(\-\d+\.?\d*)\*\*/g, '($1)**');
+            rightExpr = rightExpr.replace(/(\-\d+\.?\d*)\*\*/g, '($1)**');
+            
+            // 添加数学函数支持
+            const mathFunctions = ['sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs'];
+            mathFunctions.forEach(func => {
+                leftExpr = leftExpr.replace(new RegExp(func + '\\(', 'g'), 'Math.' + func + '(');
+                rightExpr = rightExpr.replace(new RegExp(func + '\\(', 'g'), 'Math.' + func + '(');
+            });
+            
+            // 计算表达式值
+            let left, right;
+            try {
+                console.log(`区间解析: ${rangeStr} -> leftExpr: "${leftExpr}", rightExpr: "${rightExpr}"`);
+                left = eval(leftExpr);
+                right = eval(rightExpr);
+                console.log(`计算结果: left=${left}, right=${right}`);
+            } catch (e) {
+                console.error('区间表达式计算错误:', e);
+                return null;
+            }
+            
+            return {
+                leftType: paramMatch[1],
+                left: left,
+                right: right,
+                rightType: paramMatch[4]
+            };
+        }
+        
+        return null;
     }
 
     // 表达式解析
@@ -388,11 +471,34 @@
         const pointsArr = [];
         for (let i = 0; i < exprs.length; i++) {
             let expr = exprs[i];
+            
+            // 先处理负数的幂运算（在参数替换之前）
+            expr = expr.replace(/(\-\d+\.?\d*)\^(\d+)/g, 'Math.pow($1, $2)');
+            
             Object.keys(params).forEach(key => {
-                expr = expr.replace(new RegExp(key, 'g'), params[key]);
+                expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), params[key]);
             });
-            const rangeInfo = parseRange(ranges[i]);
+            // 将数学符号转换为JavaScript语法（仅用于eval计算）
+            // 使用Math.pow来避免JavaScript幂运算的语法问题
+            // 处理负数的幂运算，确保括号正确
+            expr = expr.replace(/([a-zA-Z_][a-zA-Z0-9]*)\^(\d+)/g, 'Math.pow($1, $2)');
+            
+            // 处理负数的特殊情况
+            expr = expr.replace(/(\-\d+\.?\d*)\*\*/g, '($1)**');
+            
+            // 添加数学函数支持
+            const mathFunctions = ['sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs'];
+            mathFunctions.forEach(func => {
+                expr = expr.replace(new RegExp(func + '\\(', 'g'), 'Math.' + func + '(');
+            });
+            const rangeInfo = parseRange(ranges[i], params);
             if (!rangeInfo) continue;
+            
+            // 检查区间是否有效（左端点小于右端点，但允许单点）
+            if (rangeInfo.left > rangeInfo.right) {
+                console.warn(`无效区间: [${rangeInfo.left}, ${rangeInfo.right}]`);
+                continue;
+            }
             // 判断是否为参数方程
             if (input.graphType === 'parametric') {
                 const [xExpr, yExpr] = exprs;
@@ -412,8 +518,17 @@
             if (rangeInfo.left === rangeInfo.right) {
                 let y;
                 try {
-                    y = eval(expr.replace(/x/g, `(${rangeInfo.left})`));
-                } catch { y = NaN; }
+                    // 先进行参数替换，再计算y值
+                    let evalExpr = expr;
+                    Object.keys(params).forEach(key => {
+                        evalExpr = evalExpr.replace(new RegExp(`\\b${key}\\b`, 'g'), params[key]);
+                    });
+                    y = eval(evalExpr.replace(/x/g, `(${rangeInfo.left})`));
+                    console.log(`单点计算: expr="${expr}", x=${rangeInfo.left}, y=${y}`);
+                } catch (e) { 
+                    y = NaN; 
+                    console.error('单点计算错误:', e);
+                }
                 if (!isNaN(y)) {
                     pointsArr.push({
                         points: [[rangeInfo.left, y]],
@@ -422,11 +537,22 @@
                         graphType: 'scatter',
                         attr: { r: 8, fill: colors[i] || colors[0], stroke: 'white', 'stroke-width': 2 }
                     });
+                    console.log(`添加单点: [${rangeInfo.left}, ${y}], 颜色: ${colors[i] || colors[0]}`);
                 }
             } else {
                 // 主函数线，修正：加scope: params
+                console.log(`绘制函数: ${expr}, 区间: [${rangeInfo.left}, ${rangeInfo.right}], 颜色: ${colors[i] || colors[0]}`);
+                
+                // 为function-plot创建正确的表达式（保持^符号）
+                let plotExpr = exprs[i];
+                Object.keys(params).forEach(key => {
+                    plotExpr = plotExpr.replace(new RegExp(`\\b${key}\\b`, 'g'), params[key]);
+                });
+                // 处理数学常量
+                plotExpr = plotExpr.replace(/\be\b/g, '2.718281828459045');  // 将独立的 e 替换为数值
+                
                 dataArr.push({
-                    fn: expr,
+                    fn: plotExpr,
                     color: colors[i] || colors[0],
                     graphType: input.graphType,
                     nSamples: input.nSamples,
@@ -489,37 +615,21 @@
                         annotationTexts.forEach(text => {
                             text.style.fill = 'white';
                         });
-                        // 添加原点O标注
-                        addOriginLabel(instance);
-                        // 添加事件监听器来确保原点O跟随所有变换
+                        // 添加事件监听器来确保图表正确渲染
                         const svg = plotElement.querySelector('svg');
                         if (svg) {
                             svg.addEventListener('wheel', () => {
-                                setTimeout(() => addOriginLabel(instance), 50);
-                            });
-                            svg.addEventListener('mousedown', () => {
-                                const handleMouseMove = () => {
-                                    setTimeout(() => addOriginLabel(instance), 10);
-                                };
-                                const handleMouseUp = () => {
-                                    setTimeout(() => addOriginLabel(instance), 50);
-                                    document.removeEventListener('mousemove', handleMouseMove);
-                                    document.removeEventListener('mouseup', handleMouseUp);
-                                };
-                                document.addEventListener('mousemove', handleMouseMove);
-                                document.addEventListener('mouseup', handleMouseUp);
-                            });
-                            svg.addEventListener('dblclick', () => {
-                                setTimeout(() => addOriginLabel(instance), 100);
-                            });
-                            const observer = new MutationObserver(() => {
-                                setTimeout(() => addOriginLabel(instance), 10);
-                            });
-                            observer.observe(svg, {
-                                childList: true,
-                                subtree: true,
-                                attributes: true,
-                                attributeFilter: ['transform']
+                                // 重新应用样式
+                                setTimeout(() => {
+                                    const axisTexts = plotElement.querySelectorAll('.axis text');
+                                    axisTexts.forEach(text => {
+                                        text.style.fill = 'white';
+                                    });
+                                    const tickTexts = plotElement.querySelectorAll('.tick text');
+                                    tickTexts.forEach(text => {
+                                        text.style.fill = 'white';
+                                    });
+                                }, 50);
                             });
                         }
                     }
@@ -530,8 +640,6 @@
                 return null;
             }
         },
-        // 获取原点标注函数
-        addOriginLabel: addOriginLabel,
         // 主入口
         run: function(data) {
             PlotLayout.init("");
