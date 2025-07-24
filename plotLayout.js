@@ -61,13 +61,6 @@
                 font-weight: bold !important;
             }
 
-            /* 原点O标注特别样式 */
-            #plot .annotations text[text-anchor="middle"] {
-                fill: white !important;
-                font-size: 16px !important;
-                font-weight: bold !important;
-            }
-
             /* 网格线样式 */
             #plot .grid line {
                 stroke: rgba(255, 255, 255, 0.2) !important;
