@@ -427,6 +427,12 @@
                 rightExpr = rightExpr.replace(new RegExp(func + '\\(', 'g'), 'Math.' + func + '(');
             });
             
+            // 处理数学常量
+            leftExpr = leftExpr.replace(/\be\b/g, '2.718281828459045');
+            rightExpr = rightExpr.replace(/\be\b/g, '2.718281828459045');
+            leftExpr = leftExpr.replace(/\bpi\b/g, '3.141592653589793');
+            rightExpr = rightExpr.replace(/\bpi\b/g, '3.141592653589793');
+            
             // 计算表达式值
             let left, right;
             try {
@@ -484,6 +490,10 @@
             mathFunctions.forEach(func => {
                 expr = expr.replace(new RegExp(func + '\\(', 'g'), 'Math.' + func + '(');
             });
+            
+            // 处理数学常量
+            expr = expr.replace(/\be\b/g, '2.718281828459045');
+            expr = expr.replace(/\bpi\b/g, '3.141592653589793');
             const rangeInfo = parseRange(ranges[i], params);
             if (!rangeInfo) continue;
             
@@ -495,15 +505,33 @@
             // 判断是否为参数方程
             if (input.graphType === 'parametric') {
                 const [xExpr, yExpr] = exprs;
+                
+                // 确保参数方程中的数学常量也被正确处理
+                let processedXExpr = xExpr;
+                let processedYExpr = yExpr;
+                
+                // 处理数学常量
+                processedXExpr = processedXExpr.replace(/\bpi\b/g, '3.141592653589793');
+                processedYExpr = processedYExpr.replace(/\bpi\b/g, '3.141592653589793');
+                processedXExpr = processedXExpr.replace(/\be\b/g, '2.718281828459045');
+                processedYExpr = processedYExpr.replace(/\be\b/g, '2.718281828459045');
+                
+                // 在 scope 中添加数学常量
+                const scopeWithConstants = {
+                    ...params,
+                    pi: 3.141592653589793,
+                    e: 2.718281828459045
+                };
+                
                 dataArr.push({
                     fnType: 'parametric',
                     graphType: 'polyline',
                     color: colors[i] || colors[0],
                     nSamples: input.nSamples || 200,
                     range: [rangeInfo.left, rangeInfo.right],
-                    x: `(${xExpr})`,
-                    y: `(${yExpr})`,
-                    scope: params
+                    x: `(${processedXExpr})`,
+                    y: `(${processedYExpr})`,
+                    scope: scopeWithConstants
                 });
                 break;
             }
@@ -543,6 +571,17 @@
                 });
                 // 处理数学常量
                 plotExpr = plotExpr.replace(/\be\b/g, '2.718281828459045');  // 将独立的 e 替换为数值
+                plotExpr = plotExpr.replace(/\bpi\b/g, '3.141592653589793');  // 将独立的 pi 替换为数值
+                
+                // 确保所有数学常量都被正确替换
+                plotExpr = plotExpr.replace(/\bpi\b/g, '3.141592653589793');
+                
+                // 在 scope 中添加数学常量
+                const scopeWithConstants = {
+                    ...params,
+                    pi: 3.141592653589793,
+                    e: 2.718281828459045
+                };
                 
                 dataArr.push({
                     fn: plotExpr,
@@ -550,7 +589,7 @@
                     graphType: input.graphType,
                     nSamples: input.nSamples,
                     range: [rangeInfo.left, rangeInfo.right],
-                    scope: params
+                    scope: scopeWithConstants
                 });
                 // 不再绘制区间端点圆点
             }
